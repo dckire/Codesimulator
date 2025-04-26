@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal de Codificación Infinita</title>
+    <!-- Favicon añadido -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💻</text></svg>">
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #00ff00; /* Texto verde */
+            --prompt-color: #4CAF50;
+            --command-color: #00ff00; /* Comandos verdes */
+            --comment-color: #6A9955;
+            --string-color: #CE9178;
+            --keyword-color: #00ff00; /* Palabras clave verdes */
+            --number-color: #B5CEA8;
+            --function-color: #00ff00; /* Funciones verdes */
+            --operator-color: #00ff00; /* Operadores verdes */
+            --error-color: #F44747;
+            --warning-color: #FFCC00;
+            --cursor-color: #00ff00; /* Cursor verde */
+            --header-color: #888;
+            --border-color: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            line-height: 1.5;
+        }
+
+        #terminal-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #terminal-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(rgba(26, 26, 26, 0.9), rgba(26, 26, 26, 0.9)),
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 255, 0, 0.03), /* Líneas verdes */
+                    rgba(0, 255, 0, 0.03) 1px,
+                    transparent 1px,
+                    transparent 2px
+                );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 15px;
+            color: var(--header-color);
+            font-size: 0.85em;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            z-index: 3;
+            background-color: rgba(30, 30, 30, 0.8);
+        }
+
+        .terminal-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .terminal-tab {
+            padding: 2px 8px;
+            border-radius: 3px 3px 0 0;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .terminal-tab.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-bottom: 2px solid var(--prompt-color);
+        }
+
+        #terminal-content {
+            flex-grow: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #terminal-output {
+            height: 100%;
+            padding: 15px;
+            overflow-y: auto;
+            position: relative;
+            z-index: 2;
+            font-size: 1.1em; /* Tamaño de fuente aumentado */
+        }
+
+        .prompt { color: var(--prompt-color); }
+        .command { color: var(--command-color); }
+        .comment { color: var(--comment-color); }
+        .string { color: var(--string-color); }
+        .keyword { color: var(--keyword-color); }
+        .number { color: var(--number-color); }
+        .function { color: var(--function-color); }
+        .operator { color: var(--operator-color); }
+        .error { color: var(--error-color); }
+        .warning { color: var(--warning-color); }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background-color: var(--cursor-color);
+            animation: blink 1s infinite;
+            vertical-align: middle;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .line {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+
+        /* Barra de scroll personalizada */
+        #terminal-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #terminal-output::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        #terminal-output::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 0, 0.2); /* Scrollbar verde */
+            border-radius: 4px;
+        }
+
+        #terminal-output::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 0, 0.3); /* Scrollbar verde más claro */
+        }
+
+        /* Efecto de terminal CRT */
+        .crt-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0.1) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal-container">
+        <div class="terminal-header">
+            <div class="terminal-tabs">
+                <div class="terminal-tab active">terminal</div>
+                <div class="terminal-tab">debug</div>
+                <div class="terminal-tab">output</div>
+            </div>
+            <div id="terminal-status">~/dev/infinite-coding</div>
+        </div>
+        <div id="terminal-content">
+            <div id="terminal-output"></div>
+            <div class="crt-effect"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración
+        const config = {
+            typingSpeed: 15,
+            lineDelay: 50,
+            maxLines: 200,
+            scrollThreshold: 0.9,
+            crtEffect: true,
+            randomErrors: true,
+            autoRestart: true,
+            restartDelay: 3000
+        };
+
+        // Scripts de codificación (simplificados para mejor visualización)
+        const scripts = [
+            {
+                name: "Node.js API",
+                setup: [
+                    {text: '<span class="prompt">❯</span> <span class="command">npm init -y</span>'},
+                    {text: 'Initialized empty npm package'},
+                    {text: '<span class="prompt">❯</span> <span class="command">npm install express</span>'},
+                    {text: 'added 50 packages in 2s'}
+                ],
+                code: [
+                    {text: '<span class="comment">// server.js</span>'},
+                    {text: '<span class="keyword">const</span> express = <span class="command">require</span>(<span class="string">\'express\'</span>);'},
+                    {text: '<span class="keyword">const</span> app = <span class="command">express</span>();'},
+                    {text: '<span class="keyword">const</span> PORT = <span class="number">3000</span>;'},
+                    {text: ''},
+                    {text: 'app.<span class="command">get</span>(<span class="string">\'/\'</span>, (req, res) => {'},
+                    {text: '  res.<span class="command">send</span>(<span class="string">\'Hello World!\'</span>);'},
+                    {text: '});'},
+                    {text: ''},
+                    {text: 'app.<span class="command">listen</span>(PORT, () => {'},
+                    {text: '  console.<span class="command">log</span>(<span class="string">`Server running on port ${PORT}`</span>);'},
+                    {text: '});'}
+                ],
+                run: [
+                    {text: '<span class="prompt">❯</span> <span class="command">node server.js</span>'},
+                    {text: 'Server running on port 3000'}
+                ]
+            },
+            {
+                name: "React App",
+                setup: [
+                    {text: '<span class="prompt">❯</span> <span class="command">npx create-react-app my-app</span>'},
+                    {text: 'Creating a new React app...'},
+                    {text: 'Success! Created my-app'},
+                    {text: '<span class="prompt">❯</span> <span class="command">cd my-app</span>'}
+                ],
+                code: [
+                    {text: '<span class="comment">// App.js</span>'},
+                    {text: '<span class="keyword">import</span> React <span class="keyword">from</span> <span class="string">\'react\'</span>;'},
+                    {text: ''},
+                    {text: '<span class="keyword">function</span> <span class="function">App</span>() {'},
+                    {text: '  <span class="keyword">return</span> ('},
+                    {text: '    <span class="operator"><</span><span class="keyword">div</span><span class="operator">></span>'},
+                    {text: '      <span class="operator"><</span><span class="keyword">h1</span><span class="operator">></span>Hello World<span class="operator"><</span><span class="operator">/</span><span class="keyword">h1</span><span class="operator">></span>'},
+                    {text: '    <span class="operator"><</span><span class="operator">/</span><span class="keyword">div</span><span class="operator">></span>'},
+                    {text: '  );'},
+                    {text: '}'},
+                    {text: ''},
+                    {text: '<span class="keyword">export</span> <span class="keyword">default</span> App;'}
+                ],
+                run: [
+                    {text: '<span class="prompt">❯</span> <span class="command">npm start</span>'},
+                    {text: 'Compiled successfully!'}
+                ]
+            }
+        ];
+
+        // Variables de estado
+        let currentScript = 0;
+        let currentSection = 'setup';
+        let currentLine = 0;
+        let currentChar = 0;
+        let timeoutId;
+        let lineCount = 0;
+
+        // Elementos del DOM
+        const output = document.getElementById('terminal-output');
+        const status = document.getElementById('terminal-status');
+        const tabs = document.querySelectorAll('.terminal-tab');
+
+        // Función para limpiar la terminal
+        function clearTerminal() {
+            output.innerHTML = '';
+            lineCount = 0;
+        }
+
+        // Función para escribir texto
+        function typeWriter() {
+            const script = scripts[currentScript];
+            const section = script[currentSection];
+            
+            if (!section || currentLine >= section.length) {
+                if (currentSection === 'setup') {
+                    currentSection = 'code';
+                } else if (currentSection === 'code') {
+                    currentSection = 'run';
+                } else {
+                    if (config.autoRestart) {
+                        setTimeout(() => {
+                            currentScript = (currentScript + 1) % scripts.length;
+                            currentSection = 'setup';
+                            currentLine = 0;
+                            currentChar = 0;
+                            clearTerminal();
+                            typeWriter();
+                        }, config.restartDelay);
+                    }
+                    return;
+                }
+                
+                currentLine = 0;
+                currentChar = 0;
+                setTimeout(typeWriter, 500);
+                return;
+            }
+
+            const line = section[currentLine];
+            
+            if (currentChar === 0) {
+                const lineElement = document.createElement('p');
+                lineElement.className = 'line';
+                output.appendChild(lineElement);
+                lineCount++;
+            }
+
+            const lines = output.getElementsByClassName('line');
+            const currentLineElement = lines[lines.length - 1];
+
+            if (currentChar < line.text.length) {
+                currentLineElement.innerHTML = line.text.substring(0, currentChar + 1);
+                currentChar++;
+                
+                const speed = line.text[currentChar] === ' ' ? 
+                    config.typingSpeed / 2 : 
+                    config.typingSpeed + Math.random() * 20;
+                
+                timeoutId = setTimeout(typeWriter, speed);
+            } else {
+                currentLine++;
+                currentChar = 0;
+                
+                const delay = currentLine % 5 === 0 ? 
+                    line.delay || config.lineDelay * 3 : 
+                    line.delay || config.lineDelay;
+                
+                timeoutId = setTimeout(typeWriter, delay);
+            }
+
+            output.scrollTop = output.scrollHeight;
+            updateStatus();
+        }
+
+        // Función para actualizar la barra de estado
+        function updateStatus() {
+            const script = scripts[currentScript];
+            status.textContent = `~/dev/${script.name.toLowerCase().replace(/\s+/g, '-')}`;
+        }
+
+        // Iniciar cuando la página carga
+        window.onload = function() {
+            const link = document.createElement('link');
+            link.href = 'https://fonts.googleapis.com/css2?family=Fira+Code&display=swap';
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+            
+            typeWriter();
+        };
+
+        // Reiniciar al hacer clic
+        document.addEventListener('click', function() {
+            clearTimeout(timeoutId);
+            currentScript = Math.floor(Math.random() * scripts.length);
+            currentSection = 'setup';
+            currentLine = 0;
+            currentChar = 0;
+            clearTerminal();
+            typeWriter();
+        });
+    </script>
+</body>
+</html>
